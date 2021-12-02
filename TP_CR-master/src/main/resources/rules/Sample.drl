@@ -1,0 +1,184 @@
+package resources.rules;
+
+import java.util.Scanner 
+import com.sample.model.data.SystemData;
+import com.sample.model.data.Patient
+
+// Critérios de Exclusão do estudo
+
+rule "Excluido por gravidez ou periodo lactante"
+salience 100
+    when
+    	$p: Patient(pregnancy == true)
+    then
+    	System.out.println("A paciente " + $p.getFirstName() + " " + $p.getLastName()  + " encontra-se grávida ou lactante.");
+    	retract ($p);
+end
+
+rule "Excluir por infeção ativa"
+salience 96
+    when
+    	$p:Patient(activeInfection == true);
+    then
+    	System.out.println("O paciente " + $p.getFirstName() + " " + $p.getLastName()  + " apresenta uma infeção ativa.");
+    	retract($p);
+end
+
+rule "Excluir paciente se tiver radioterapia torácica"
+salience 90
+	when
+		$p: Patient(radioterapy == true);
+	then
+		System.out.println("O paciente " + $p.getFirstName() + " " + $p.getLastName()  + " apresenta uma radioterapia prévia.");
+		retract($p);
+end
+
+rule "Excluir paciente se tiver uma função hematológica, hepática, renal ou pulmonar comprometida"
+salience 85
+	when
+		$p:Patient(neutrophilsCount < 1.5 || plateletsCount < 100 || bilirubinCount > 1.5*1.1 || creatinineCount > 120 || controlOfLungFunction < 1.5)
+	then
+		System.out.println("O paciente " + $p.getFirstName() + " " + $p.getLastName()  + " tem funções corporais comprometidas.");
+		retract($p);
+end
+
+// Critérios de Inclusão do estudo 
+
+rule "Excluir paciente se for menor de 18"
+salience 80
+    when
+    	$p:Patient(age < 18);
+    then
+    	System.out.println("O paciente " + $p.getFirstName() + " " + $p.getLastName()  + " foi excluido por ser menor de idade.");
+    	retract($p);
+end
+
+rule "Excluir paciente se não se verificar o termo de consentimento"
+salience 75
+	when
+		$p:Patient(consentmentTerm == false);
+	then
+		System.out.println("O paciente " + $p.getFirstName() + " " + $p.getLastName()  + " foi excluido porque não assinou o termo de consentimento.");
+		retract($p);
+end
+
+rule "Excluir por Indicador de saude invalido"
+salience 70
+    when
+    	$p:Patient(healthIndicator != 0, healthIndicator != 1);
+    then
+    	System.out.println("O paciente " + $p.getFirstName() + " " + $p.getLastName()  + " tem um indicador de desempenho inválido.");
+    	retract($p);
+end
+
+rule "Excluir por distancia da borda superior do tumor insuficiente"
+salience 65
+	when
+		$p: Patient(tumorSize < 3)
+	then
+		System.out.println("O paciente " + $p.getFirstName() + " " + $p.getLastName()  + " foi excluido por ter o tumor muito perto do esófago.");	
+		retract($p);
+		
+end
+
+rule "Excluir por falta de doença clinica"
+salience 60
+    when
+    	$p:Patient(stage2Desease == false, stage3Desease == false);
+    then
+    	System.out.println("O paciente " + $p.getFirstName() + " " + $p.getLastName()  + " não apresenta nenhuma doença clinica.");
+    	retract($p);
+end
+
+rule "Excluir paciente se não tiver diagnóstico de carcinomas ou siewert"
+salience 55
+    when
+        $p:Patient(diagnose1 == false,
+        	 diagnose2 == false,
+        	 diagnose3 == false,
+        	 diagnose4 == false);
+    then
+		System.out.println("O paciente " + $p.getFirstName() + " " + $p.getLastName()  + " foi excluido porque os diagnósticos de carcinome/SIEWERT deram falso.");    
+        retract($p);
+end
+
+// Admitir os restantes pacientes ao estudo
+
+rule "Admitir pacientes"
+salience 50
+    when
+    	$p:Patient();
+    then
+    	$p.setSelectedForTreatment(true);
+    	$p.setTreatment("");
+		System.out.println("O paciente " + $p.getFirstName() + " " + $p.getLastName()  + " foi admitido.");    	
+end
+
+// Verificar exames adicionais
+
+rule "Efetua endoscopia se houver lesões endoscópicas"
+salience 30
+	when
+		$p: Patient()
+	then
+		Scanner input = new Scanner(System.in);   
+		String r1;
+		do{                          
+			System.out.println("O paciente apresenta lesões endoscópicas ? (S/N)");       
+			r1 = input.nextLine();     
+		}while(!(r1.equals("S")) && !(r1.equals("N")));
+		
+		if(r1.equals("S")){
+			System.out.println("efetuar endoscopia 6 semanas após o ínicio tratamento no paciente " + $p.getFirstName() + " " + $p.getLastName());
+			$p.setEndoscopicInjuries(true);
+			$p.setTreatment("Efetuar endoscopia, ");	
+		}
+		else{
+			$p.setEndoscopicInjuries(false);
+		}
+end
+
+rule "Efetua broncoscopia se o tumor estiver relacionado com a árvore respiratória"
+salience 20
+	when
+		$p: Patient()
+	then
+		Scanner input = new Scanner(System.in);   
+		String r1;
+		do{                          
+			System.out.println("O tumor afeta a árvore respiratória ? (S/N)");       
+			r1 = input.nextLine();     
+		}while(!(r1.equals("S")) && !(r1.equals("N")));
+		
+		if(r1.equals("S")){
+			System.out.println("efetuar broncoscopia na fase de rastreio no paciente " + $p.getFirstName() + " " + $p.getLastName());
+			$p.setLungsAffected(true);
+			$p.setTreatment($p.getTreatment().concat("Efetuar broncoscopia, "));	
+		}
+		else{
+			$p.setLungsAffected(false);
+		}
+end
+
+rule "Efectua jejum se o volume do estomago tiver incluido no tratamento"
+salience 10
+	when
+		$p: Patient()
+	then
+		Scanner input = new Scanner(System.in);   
+		String r1;
+		do{                          
+			System.out.println("O estômago está incluido no volume de tratamento ? (S/N)");       
+			r1 = input.nextLine();     
+		}while(!(r1.equals("S")) && !(r1.equals("N")));
+		
+		if(r1.equals("S")){
+			System.out.println("O paciente " + $p.getFirstName() + " " + $p.getLastName() + " tem de efetuar jejum antes dos exames.");
+			$p.setStomachIncluded(true);
+			$p.setTreatment($p.getTreatment().concat("Efetuar jejum."));	
+		}
+		else{
+			System.out.println("O paciente " + $p.getFirstName() + " " + $p.getLastName() + " não necessita de fazer jejum");
+			$p.setStomachIncluded(false);
+		}
+end
